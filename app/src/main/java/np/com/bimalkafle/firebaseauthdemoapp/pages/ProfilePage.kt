@@ -15,7 +15,6 @@ fun ProfilePage(
     authViewModel: AuthViewModel
 ) {
     val currentUser = authViewModel.getCurrentUser()
-    Text(text = "Name: ${currentUser?.displayName ?: "Not available"}")
 
 
     Column(
@@ -39,17 +38,5 @@ fun ProfilePage(
             Text(text = "No user is currently logged in.")
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = {
-                authViewModel.signout()
-                navController.navigate("login") {
-                    popUpTo("profile") { inclusive = true }
-                }
-            }
-        ) {
-            Text("Sign Out")
-        }
     }
 }
