@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "np.com.bimalkafle.firebaseauthdemoapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "np.com.bimalkafle.firebaseauthdemoapp"
@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.firebase.auth)
     implementation(libs.androidx.runtime.livedata)
+    implementation(libs.ads.mobile.sdk)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
