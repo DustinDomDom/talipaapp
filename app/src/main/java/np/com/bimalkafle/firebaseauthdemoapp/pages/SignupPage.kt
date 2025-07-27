@@ -32,6 +32,10 @@ fun SignupPage(
     navController: NavController,
     authViewModel: AuthViewModel
 ) {
+    var name by remember {
+        mutableStateOf("")
+    }
+
     var email by remember {
         mutableStateOf("")
     }
@@ -65,6 +69,16 @@ fun SignupPage(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
+            value = name,
+            onValueChange = {
+                name = it
+            },
+            label = {
+                Text(text = "Name")
+            }
+        )
+
+        OutlinedTextField(
             value = email,
             onValueChange = {
                 email = it
@@ -89,7 +103,7 @@ fun SignupPage(
 
         Button(
             onClick = {
-                authViewModel.signup(email, password)
+                authViewModel.signup(email, password, name)
             }, enabled = authState.value != AuthState.Loading
         ) {
             Text(text = "Create account")
