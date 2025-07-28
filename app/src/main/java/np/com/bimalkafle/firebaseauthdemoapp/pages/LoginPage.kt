@@ -31,8 +31,8 @@ import np.com.bimalkafle.firebaseauthdemoapp.AuthViewModel
 
 @Composable
 fun LoginPage(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel) {
-    
-    
+
+
     var email by remember {
         mutableStateOf("")
     }
@@ -83,7 +83,9 @@ fun LoginPage(modifier: Modifier = Modifier,navController: NavController,authVie
                 Text(text = "Password")
             }
         )
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(8.dp))
+
 
         Button(onClick = {
             authViewModel.login(email,password)

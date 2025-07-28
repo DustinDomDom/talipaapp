@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import np.com.bimalkafle.firebaseauthdemoapp.AuthState
 import np.com.bimalkafle.firebaseauthdemoapp.AuthViewModel
-//HomePage.kt
+
 @Composable
 fun HomePage(
     modifier: Modifier = Modifier,
@@ -24,9 +24,9 @@ fun HomePage(
     val authState = authViewModel.authState.observeAsState()
     val currentUser = authViewModel.getCurrentUser()
     val displayName = currentUser?.displayName ?: "User"
-    var showDialog by remember { mutableStateOf(false) }
-    var storeName by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
+    var storeList by remember { mutableStateOf<List<AuthViewModel.Store>>(emptyList()) }
+
     LaunchedEffect(authState.value) {
         if (authState.value is AuthState.Unauthenticated) {
             navController.navigate("login") {
@@ -34,6 +34,13 @@ fun HomePage(
             }
         }
     }
+
+    LaunchedEffect(Unit) {
+        authViewModel.fetchStores { stores ->
+            storeList = stores
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -42,53 +49,31 @@ fun HomePage(
     ) {
         Text(text = "Welcome $displayName", fontSize = 32.sp)
         Spacer(modifier = Modifier.height(24.dp))
-        var storeList by remember { mutableStateOf<List<AuthViewModel.Store>>(emptyList()) }
-        var expanded by remember { mutableStateOf(false) }
 
-        LaunchedEffect(Unit) {
-            authViewModel.fetchStores { stores ->
-                storeList = stores
-            }
-        }
-
-        Box {
-            Text(
-                text = "Select Store",
-                color = Color.Blue,
-                fontSize = 16.sp,
-                modifier = Modifier.clickable {
-                    expanded = true
-                }
-            )
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
+        if (storeList.isEmpty()) {
+            Text(text = "No stores found.", color = Color.Gray)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 storeList.forEach { store ->
-                    DropdownMenuItem(
-                        text = { Text(store.name) },
-                        onClick = {
-                            expanded = false
-                            navController.navigate("store/${store.id}")
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { navController.navigate("store/${store.id}") },
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                        ) {
+                            Text(text = store.name, fontSize = 20.sp, color = Color.Black)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = "Store ID: ${store.id}", fontSize = 14.sp, color = Color.DarkGray)
                         }
-                    )
+                    }
                 }
             }
         }
-
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Create Store
-        Text(
-            text = "Create Store",
-            color = Color.Blue,
-            fontSize = 16.sp,
-            modifier = Modifier.clickable {
-                showDialog = true
-            }
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -99,51 +84,4 @@ fun HomePage(
             )
         }
     }
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Create Store") },
-            text = {
-                Column {
-                    Text("Enter store name:")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextField(
-                        value = storeName,
-                        onValueChange = { storeName = it },
-                        placeholder = { Text("e.g. PureGold") },
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (storeName.isNotBlank()) {
-                            authViewModel.createStore(storeName.trim()) { success, msg ->
-                                Log.d("StoreCreation", "Success: $success, Message: $msg")
-                                message = msg
-                                showDialog = false
-                                storeName = ""
-                            }
-                        } else {
-                            message = "Store name cannot be empty"
-                        }
-                    }
-                ) {
-                    Text("Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showDialog = false
-                    storeName = ""
-                }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
-
-
-

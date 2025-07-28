@@ -15,7 +15,7 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
     Scaffold(
         bottomBar = {
             val currentDestination = navController.currentBackStackEntryAsState().value?.destination?.route
-            if (currentDestination == "home" || currentDestination == "shoppingcart" || currentDestination == "profile") {
+            if (currentDestination == "home" || currentDestination == "shoppingcart" || currentDestination == "profile" || currentDestination == "StorePage") {
                 BottomNavigationBar(navController, authViewModel)
             }
         }
@@ -39,6 +39,14 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
             }
             composable("profile") {
                 ProfilePage(modifier, navController, authViewModel)
+            }
+            composable("store/{storeId}") { backStackEntry ->
+                val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
+                StorePage(
+                    storeId = storeId,
+                    authViewModel = authViewModel,
+                    navController = navController
+                )
             }
         }
     }
