@@ -40,14 +40,6 @@ fun MyAppNavigation(modifier: Modifier = Modifier, authViewModel: AuthViewModel)
             composable("profile") {
                 ProfilePage(modifier, navController, authViewModel)
             }
-            composable("store/{storeId}") { backStackEntry ->
-                val storeId = backStackEntry.arguments?.getString("storeId") ?: ""
-                StorePage(
-                    storeId = storeId,
-                    authViewModel = authViewModel,
-                    navController = navController
-                )
-            }
         }
     }
 }
