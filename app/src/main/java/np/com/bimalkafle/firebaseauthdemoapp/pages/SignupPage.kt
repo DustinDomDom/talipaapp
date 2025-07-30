@@ -101,12 +101,13 @@ fun SignupPage(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+
         Button(
             onClick = {
                 if (name.isBlank() || email.isBlank() || password.isBlank()) {
                     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                 } else {
-                    authViewModel.signup(email, password, name)
+                    authViewModel.signup(email, password, name.trim())
                 }
             },
             enabled = authState.value != AuthState.Loading
@@ -124,3 +125,4 @@ fun SignupPage(
 
     }
 }
+

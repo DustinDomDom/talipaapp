@@ -10,8 +10,9 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.database.FirebaseDatabase
 import java.util.*
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.DataSnapshot
-
+import com.google.firebase.database.DatabaseError
 
 
 class AuthViewModel : ViewModel() {
@@ -283,31 +284,6 @@ class AuthViewModel : ViewModel() {
             }
     }
 
-    fun signup(email: String, password: String, name: String) {
-        _authState.value = AuthState.Loading
-        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val user = FirebaseAuth.getInstance().currentUser
-
-                    val profileUpdates = UserProfileChangeRequest.Builder()
-                        .setDisplayName(name)
-                        .build()
-
-                    user?.updateProfile(profileUpdates)
-                        ?.addOnCompleteListener { updateTask ->
-                            if (updateTask.isSuccessful) {
-                                _authState.value = AuthState.Authenticated
-                            } else {
-                                _authState.value = AuthState.Error(updateTask.exception?.message ?: "Failed to update profile")
-                            }
-                        }
-                } else {
-                    _authState.value = AuthState.Error(task.exception?.message ?: "Signup failed")
-                }
-            }
-    }
-
     fun signout(){
         auth.signOut()
         _authState.value = AuthState.Unauthenticated
@@ -317,6 +293,48 @@ class AuthViewModel : ViewModel() {
         return FirebaseAuth.getInstance().currentUser
     }
 
+    fun signup(email: String, password: String, username: String) {
+        _authState.value = AuthState.Loading
+
+        val normalizedUsername = username.trim().lowercase()
+        val usersRef = FirebaseDatabase.getInstance().getReference("users")
+
+        usersRef.orderByChild("name").equalTo(normalizedUsername)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        _authState.value = AuthState.Error("Username '$normalizedUsername' is already taken.")
+                    } else {
+                        FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+                            .addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    val uid = task.result?.user?.uid ?: return@addOnCompleteListener
+                                    val userRef = usersRef.child(uid)
+
+                                    val userData = mapOf(
+                                        "name" to normalizedUsername,
+                                        "email" to email
+                                    )
+
+                                    userRef.setValue(userData)
+                                        .addOnSuccessListener {
+                                            _authState.value = AuthState.Authenticated
+                                        }
+                                        .addOnFailureListener {
+                                            _authState.value = AuthState.Error("Failed to save user data.")
+                                        }
+                                } else {
+                                    _authState.value = AuthState.Error(task.exception?.message ?: "Signup failed.")
+                                }
+                            }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    _authState.value = AuthState.Error("Database error: ${error.message}")
+                }
+            })
+    }
 
 }
 
