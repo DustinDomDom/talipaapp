@@ -35,8 +35,10 @@ import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.AddBusiness
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
     modifier: Modifier = Modifier,
@@ -49,6 +51,9 @@ fun HomePage(
     var message by remember { mutableStateOf<String?>(null) }
     var storeList by remember { mutableStateOf<List<AuthViewModel.Store>>(emptyList()) }
 
+    val colors = MaterialTheme.colorScheme
+    val typography = MaterialTheme.typography
+
     LaunchedEffect(authState.value) {
         if (authState.value is AuthState.Unauthenticated) {
             navController.navigate("login") {
@@ -56,73 +61,107 @@ fun HomePage(
             }
         }
     }
+
     LaunchedEffect(Unit) {
         authViewModel.fetchStores { stores ->
             storeList = stores
         }
     }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(text = "Welcome $displayName", fontSize = 32.sp)
-            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Welcome back! $displayName",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Manage your stores with ease.",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+            )
         }
 
         if (storeList.isEmpty()) {
             item {
-                Text(text = "Loading Stores...", color = Color.Gray)
+                Text(
+                    text = "Loading stores...",
+                    style = typography.bodyMedium,
+                    color = colors.outline
+                )
             }
         } else {
             items(storeList) { store ->
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate("store/${store.id}") },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    onClick = { navController.navigate("store/${store.id}") },
+                    colors = CardDefaults.cardColors(containerColor = colors.surface),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
                         if (store.imageUrl.isNotBlank()) {
-                            Box(
+                            AsyncImage(
+                                model = store.imageUrl,
+                                contentDescription = "${store.name} image",
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(16.dp))
-                            ) {
-                                AsyncImage(
-                                    model = store.imageUrl,
-                                    contentDescription = "${store.name} image",
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
+                                    .aspectRatio(16f / 9f)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
 
-                        Text(text = store.name, fontSize = 20.sp, color = Color.Black)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = store.description, fontSize = 14.sp, color = Color.Gray)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "Store ID: ${store.id}", fontSize = 8.sp, color = Color.DarkGray)
+                        Text(
+                            text = store.name,
+                            style = typography.titleMedium,
+                            color = colors.onSurface
+                        )
+
+                        Text(
+                            text = store.description,
+                            style = typography.bodySmall,
+                            color = colors.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        Text(
+                            text = "Store ID: ${store.id}",
+                            style = typography.labelSmall,
+                            color = colors.outline,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(16.dp))
-
             message?.let {
+                val isSuccess = it.contains("success", ignoreCase = true)
                 Text(
                     text = it,
-                    color = if (it.contains("success", true)) Color.Green else Color.Red
+                    color = if (isSuccess) colors.primary else colors.error,
+                    style = typography.bodyMedium,
+                    modifier = Modifier.padding(top = 12.dp)
                 )
             }
         }
     }
 }
-

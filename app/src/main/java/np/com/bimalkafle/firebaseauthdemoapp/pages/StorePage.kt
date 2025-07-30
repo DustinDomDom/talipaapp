@@ -31,6 +31,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.SwipeLeft
+import androidx.compose.material.icons.filled.SwipeRight
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +62,9 @@ fun StorePage(
     var newDescription by remember { mutableStateOf("") }
     var newPrice by remember { mutableStateOf("") }
     var newImageUrl by remember { mutableStateOf("") }
+    var storeImageUrl by remember { mutableStateOf("") }
     val shape = RoundedCornerShape(16.dp)
+
 
     var posts by remember { mutableStateOf(listOf<Map<String, String>>()) }
 
@@ -68,6 +74,7 @@ fun StorePage(
         storeRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 storeName = snapshot.child("name").getValue(String::class.java) ?: ""
+                storeImageUrl = snapshot.child("imageUrl").getValue(String::class.java) ?: ""
                 ownerName = snapshot.child("owner").getValue(String::class.java) ?: ""
                 val currentUser = authViewModel.getCurrentUser()
                 isOwner = ownerName == (currentUser?.displayName ?: currentUser?.email ?: "")
@@ -118,9 +125,29 @@ fun StorePage(
                 .padding(16.dp),
             verticalArrangement = Arrangement.Top
         ) {
-            Text(text = "Welcome to $storeName!", style = MaterialTheme.typography.headlineSmall)
-            Text(text = "by $ownerName", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            if (storeImageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = storeImageUrl,
+                    contentDescription = "$storeName banner",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
+            Text(
+                text = storeName,
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color(60, 140, 64)
+            )
+            Text(
+                text = "by $ownerName",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray
+            )
             Spacer(modifier = Modifier.height(24.dp))
 
             if (isOwner == true) {
@@ -129,8 +156,8 @@ fun StorePage(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
                         onClick = {
@@ -140,38 +167,86 @@ fun StorePage(
                             newImageUrl = ""
                             showAddDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(76, 176, 80)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
                     ) {
                         Text("Add Product")
                     }
 
 
-                }
-                Button(
-                    onClick = { showDeleteDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    Text("Delete Store", color = Color.White)
-                }
 
+                    Button(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(246, 53, 62)),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1f).height(42.dp)
+
+                    ) {
+                        Text("Delete Store", color = Color.White)
+                    }
+
+                }
             }
             Spacer(modifier = Modifier.height(24.dp))
             if (isOwner == true) {
-                Text(
-                    "⬅️ Swipe left to edit | ➡️ Swipe right to delete",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                Divider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    color = Color(0xFFE0E0E0),
+                    thickness = 1.dp
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    color = Color(0xFFFAFAFA),
+
+
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.SwipeLeft, contentDescription = "Swipe left", tint = Color(0xFF757575))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Edit",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color(0xFF424242),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Delete",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color(0xFF424242),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.Default.SwipeRight, contentDescription = "Swipe right", tint = Color(0xFF757575))
+                        }
+                    }
+                }
             }
+
             Text("Products:", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(16.dp))
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
+
                 items(posts) { post ->
                     val dismissState = rememberDismissState(
                         confirmValueChange = {
@@ -194,6 +269,7 @@ fun StorePage(
                             }
                         }
                     )
+
 
                     val productCard = @androidx.compose.runtime.Composable {
                         Card(
@@ -400,7 +476,7 @@ fun StorePage(
             ,
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
-                    Text("Cancel")
+                    Text("Cancel" , color = MaterialTheme.colorScheme.primary)
                 }
             }
         )
@@ -492,6 +568,7 @@ fun StorePage(
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
                     Text("Cancel")
+
                 }
             }
         )

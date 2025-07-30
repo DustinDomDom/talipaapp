@@ -44,6 +44,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun ProfilePage(
@@ -65,23 +66,60 @@ fun ProfilePage(
             .padding(24.dp),
         verticalArrangement = Arrangement.Top
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Profile", style = MaterialTheme.typography.headlineMedium)
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Text("Profile", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(12.dp))
 
         currentUser?.let { user ->
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Email: ${user.email ?: "N/A"}")
-                    Text("UID: ${user.uid}")
-                    Text("Name: ${user.displayName ?: "N/A"}")
+            ElevatedCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(6.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = user.displayName ?: "No Name",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+
+                    Divider(color = Color.LightGray, thickness = 1.dp)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Email: ${user.email ?: "Not available"}",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray
+                        )
+                        Text(
+                            text = "UID: ${user.uid}",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
                 }
             }
-        } ?: Text("No user is logged in.")
+        } ?: Text(
+            text = "No user is logged in.",
+            color = Color.Gray,
+            style = MaterialTheme.typography.bodyMedium
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -352,50 +390,97 @@ fun ProfileStores(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .background(Color(0xFFF0F0F0))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(Color(0xFFF8F9FA))
     ) {
-        if (isLoading) {
-            item { Text("Loading Stores...", color = Color.Gray) }
-        } else if (storeList.isEmpty()) {
-            item { Text("No stores found.", color = Color.Gray) }
-        } else {
-            items(storeList) { store ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate("store/${store.id}") }
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        if (store.imageUrl.isNotBlank()) {
-                            Box(
+        when {
+            isLoading -> {
+                item {
+                    Text(
+                        "Loading stores...",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
 
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(16.dp))
-                            ) {
+            storeList.isEmpty() -> {
+                item {
+                    Text(
+                        "No stores found.",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+
+            else -> {
+                items(storeList) { store ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp)
+                            .clickable { navController.navigate("store/${store.id}") },
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            // Store Image
+                            if (store.imageUrl.isNotBlank()) {
+
                                 AsyncImage(
                                     model = store.imageUrl,
                                     contentDescription = "${store.name} image",
-                                    modifier = Modifier.fillMaxSize()
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(16f / 9f)
+                                        .clip(RoundedCornerShape(16.dp))
+
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
+                            // Store Name
+                            Text(
+                                store.name,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+
+                            // Store Description
+                            if (store.description.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    store.description,
+                                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.DarkGray)
                                 )
                             }
-                            Spacer(Modifier.height(8.dp))
+
+                            // Store ID
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "ID: ${store.id}",
+                                fontSize = 12.sp,
+                                color = Color.Gray
+                            )
                         }
-                        Text(store.name, fontSize = 20.sp, color = Color.Black)
-                        Spacer(Modifier.height(4.dp))
-                        Text(store.description, fontSize = 14.sp, color = Color.Gray)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Store ID: ${store.id}", fontSize = 8.sp, color = Color.DarkGray)
                     }
                 }
             }
         }
     }
 }
-
-
