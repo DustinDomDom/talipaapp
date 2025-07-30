@@ -1,4 +1,3 @@
-// ShoppingCartPage.kt
 package np.com.bimalkafle.firebaseauthdemoapp.pages
 
 import androidx.compose.foundation.layout.*
@@ -24,7 +23,9 @@ import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.rememberDismissState
 import com.google.firebase.database.*
 import androidx.compose.foundation.background
-
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.SwipeLeft
+import kotlin.collections.isNotEmpty
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,13 +61,37 @@ fun ShoppingCartPage(
                 actions = {
                     var showPlaceOrderDialog by remember { mutableStateOf(false) }
 
-                    Button(onClick = {
-                        if (cartItems.isNotEmpty()) {
-                            showPlaceOrderDialog = true
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Button(onClick = {
+                            if (cartItems.isNotEmpty()) {
+                                showPlaceOrderDialog = true
+                            }
+                        }) {
+                            Text("Place Order")
                         }
-                    }) {
-                        Text("Place Order")
+
+                        // Instructional text and icon
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 1.dp, top = 1.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack, // use Swipe/Back icon if SwipeLeft is not available
+                                contentDescription = "Swipe",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Swipe right to delete",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Gray
+                            )
+                        }
                     }
+
 
                     if (showPlaceOrderDialog) {
                         AlertDialog(
