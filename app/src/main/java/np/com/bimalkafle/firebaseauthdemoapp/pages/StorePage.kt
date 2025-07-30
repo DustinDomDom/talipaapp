@@ -20,10 +20,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import coil.compose.AsyncImage
-
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +40,9 @@ fun StorePage(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
+    val scrollState = rememberScrollState()
+    var showProductDialog by remember { mutableStateOf(false) }
+    var selectedProduct by remember { mutableStateOf<Map<String, String>?>(null) }
     var showDeletePostDialog by remember { mutableStateOf(false) }
     var deletingPostId by remember { mutableStateOf("") }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -48,6 +58,7 @@ fun StorePage(
     var newDescription by remember { mutableStateOf("") }
     var newPrice by remember { mutableStateOf("") }
     var newImageUrl by remember { mutableStateOf("") }
+    val shape = RoundedCornerShape(16.dp)
 
     var posts by remember { mutableStateOf(listOf<Map<String, String>>()) }
 
@@ -122,13 +133,18 @@ fun StorePage(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Button(
-                        onClick = { showAddDialog = true
-
+                        onClick = {
+                            newTitle = ""
+                            newDescription = ""
+                            newPrice = ""
+                            newImageUrl = ""
+                            showAddDialog = true
                         },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Add Product")
                     }
+
 
                 }
                 Button(
@@ -143,12 +159,14 @@ fun StorePage(
 
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                "⬅️ Swipe left to edit | ➡️ Swipe right to delete",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
+            if (isOwner == true) {
+                Text(
+                    "⬅️ Swipe left to edit | ➡️ Swipe right to delete",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
             Text("Products:", style = MaterialTheme.typography.titleMedium)
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -159,10 +177,10 @@ fun StorePage(
                         confirmValueChange = {
                             when (it) {
                                 DismissValue.DismissedToStart -> {
-                                    // Swiped Left ⟶ Edit
                                     newTitle = post["title"] ?: ""
                                     newDescription = post["description"] ?: ""
                                     newPrice = post["price"] ?: ""
+                                    newImageUrl = post["imageUrl"] ?: ""
                                     editingPostId = post["id"] ?: ""
                                     showEditDialog = true
                                     false
@@ -176,68 +194,133 @@ fun StorePage(
                             }
                         }
                     )
-                    Box(modifier = Modifier.padding(vertical = 4.dp)) {
-                        SwipeToDismiss(
-                            state = dismissState,
-                            background = {
-                                val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
-                                val color = when (direction) {
-                                    DismissDirection.StartToEnd -> Color.Red
-                                    DismissDirection.EndToStart -> Color.LightGray
-                                }
-                                val icon = when (direction) {
-                                    DismissDirection.StartToEnd -> Icons.Default.Delete
-                                    DismissDirection.EndToStart -> Icons.Default.Edit
-                                }
-                                val alignment = when (direction) {
-                                    DismissDirection.StartToEnd -> Alignment.CenterStart
-                                    DismissDirection.EndToStart -> Alignment.CenterEnd
-                                }
 
-                                Box(
+                    val productCard = @androidx.compose.runtime.Composable {
+                        Card(
+                            modifier = Modifier
+                                .clickable {
+                                    selectedProduct = post
+                                    showProductDialog = true
+                                }
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp)) {
+                                AsyncImage(
+                                    model = post["imageUrl"] ?: "",
+                                    contentDescription = null,
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(16.dp)) // 👈 match the card corner radius
-                                        .background(color)
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = alignment
-                                ) {
-                                    Icon(imageVector = icon, contentDescription = null, tint = Color.White)
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = post["title"] ?: "No Title",
+                                        fontSize = 18.sp,
+                                        color = Color.Black,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = post["description"] ?: "No Description",
+                                        fontSize = 14.sp,
+                                        color = Color.DarkGray,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "₱${post["price"] ?: "0"}",
+                                        fontSize = 16.sp,
+                                        color = Color(0xFF4CAF50),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
                                 }
-
-                            },
-                            dismissContent = {
-                                // Don't put vertical padding here
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    elevation = CardDefaults.cardElevation(4.dp)
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        AsyncImage(
-                                            model = post["imageUrl"],
-                                            contentDescription = "Product Image",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(180.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text("Title: ${post["title"]}")
-                                        Text("Description: ${post["description"]}")
-                                        Text("Price: ${post["price"]}")
-                                    }
-                                }
-
                             }
-                        )
+                        }
                     }
 
+                    if (isOwner == true) {
+                        Box(modifier = Modifier.padding(vertical = 0.dp)) {
+                            SwipeToDismiss(
+                                state = dismissState,
+                                background = {
+                                    val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+                                    val color = when (direction) {
+                                        DismissDirection.StartToEnd -> Color.Red
+                                        DismissDirection.EndToStart -> Color.LightGray
+                                    }
+                                    val icon = when (direction) {
+                                        DismissDirection.StartToEnd -> Icons.Default.Delete
+                                        DismissDirection.EndToStart -> Icons.Default.Edit
+                                    }
+                                    val alignment = when (direction) {
+                                        DismissDirection.StartToEnd -> Alignment.CenterStart
+                                        DismissDirection.EndToStart -> Alignment.CenterEnd
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(color),
+                                        contentAlignment = alignment
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.padding(
+                                                start = if (direction == DismissDirection.StartToEnd) 20.dp else 0.dp,
+                                                end = if (direction == DismissDirection.EndToStart) 20.dp else 0.dp
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
+                                    }
+                                },
+                                dismissContent = { productCard() }
+                            )
+                        }
+                    } else {
+                        productCard()
+                    }
                 }
+
 
             }
 
         }
     }
-
+    if (showProductDialog && selectedProduct != null) {
+        ProductsPage(
+            title = selectedProduct?.get("title") ?: "",
+            description = selectedProduct?.get("description") ?: "",
+            price = selectedProduct?.get("price") ?: "",
+            imageUrl = selectedProduct?.get("imageUrl") ?: "",
+            onCancel = { showProductDialog = false },
+            onAddToCart = {
+                selectedProduct?.let { product ->
+                    authViewModel.addToCart(storeName, product) { success, message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        if (success) {
+                            showProductDialog = false
+                        }
+                    }
+                }
+            }
+        )
+    }
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -252,13 +335,32 @@ fun StorePage(
                     OutlinedTextField(
                         value = newDescription,
                         onValueChange = { newDescription = it },
-                        label = { Text("Description") }
+                        label = { Text("Description") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 100.dp, max = 200.dp)
+                            .verticalScroll(scrollState),
+                        maxLines = 10
                     )
                     OutlinedTextField(
                         value = newPrice,
-                        onValueChange = { newPrice = it },
-                        label = { Text("Price (e.g. 120php)") }
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() }) {
+                                newPrice = input
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = "₱ Price",
+                                fontSize = 16.sp,
+                                color = Color(0xFF4CAF50), // Green color
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
                     )
+
                     OutlinedTextField(
                         value = newImageUrl,
                         onValueChange = { newImageUrl = it },
@@ -279,15 +381,14 @@ fun StorePage(
                         "title" to newTitle,
                         "description" to newDescription,
                         "price" to newPrice,
-                        "imageUrl" to newImageUrl // 👈 This line adds the image
+                        "imageUrl" to newImageUrl
                     )
-
                     postRef.setValue(postData).addOnSuccessListener {
                         Toast.makeText(context, "Product added!", Toast.LENGTH_SHORT).show()
                         newTitle = ""
                         newDescription = ""
                         newPrice = ""
-                        newImageUrl = "" // 👈 Reset the image URL
+                        newImageUrl = ""
                         showAddDialog = false
                     }.addOnFailureListener {
                         Toast.makeText(context, "Failed to add product", Toast.LENGTH_SHORT).show()
@@ -304,7 +405,6 @@ fun StorePage(
             }
         )
     }
-
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -314,43 +414,79 @@ fun StorePage(
                     OutlinedTextField(
                         value = newTitle,
                         onValueChange = { newTitle = it },
-                        label = { Text("Title") }
+                        label = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = newDescription,
-                        onValueChange = { newDescription = it },
-                        label = { Text("Description") }
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .heightIn(max = 100.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        OutlinedTextField(
+                            value = newDescription,
+                            onValueChange = { newDescription = it },
+                            label = { Text("Description") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false,
+                            maxLines = 10
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     OutlinedTextField(
                         value = newPrice,
-                        onValueChange = { newPrice = it },
-                        label = { Text("Price (e.g. 120php)") }
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() }) {
+                                newPrice = input
+                            }
+                        },
+                        label = { Text(
+                            text = "₱rice",
+                            fontSize = 16.sp,
+                            color = Color(0xFF4CAF50),
+                            style = MaterialTheme.typography.labelLarge
+                        ) },
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newImageUrl,
+                        onValueChange = { newImageUrl = it },
+                        label = { Text("Image URL (https://...)") },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val postRef = database.getReference("stores")
-                        .child(storeId)
-                        .child("posts")
-                        .child(editingPostId ?: return@TextButton)  // graceful null handling
+                TextButton(onClick = { val postRef = database.getReference("stores")
+                    .child(storeId)
+                    .child("posts")
+                    .child(editingPostId ?: return@TextButton)  // graceful null handling
 
 
                     val updatedData = mapOf(
                         "id" to editingPostId,
                         "title" to newTitle,
                         "description" to newDescription,
-                        "price" to newPrice
+                        "price" to newPrice,
+                        "imageUrl" to newImageUrl
                     )
+
 
                     postRef.setValue(updatedData).addOnSuccessListener {
                         Toast.makeText(context, "Product updated!", Toast.LENGTH_SHORT).show()
                         showEditDialog = false
                     }.addOnFailureListener {
                         Toast.makeText(context, "Failed to update product", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
-                    Text("Update")
+                    }}) {
+                    Text("Save")
                 }
             },
             dismissButton = {
@@ -389,9 +525,6 @@ fun StorePage(
             }
         )
     }
-
-
-
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },

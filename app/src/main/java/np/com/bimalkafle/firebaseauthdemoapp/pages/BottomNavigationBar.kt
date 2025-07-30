@@ -10,7 +10,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import np.com.bimalkafle.firebaseauthdemoapp.AuthViewModel
 
-
+//BottomNavigationBar.kt
 @Composable
 fun BottomNavigationBar(navController: NavController, authViewModel: AuthViewModel) {
     val items = listOf(

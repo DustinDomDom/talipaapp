@@ -10,6 +10,9 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.database.FirebaseDatabase
 import java.util.*
+import com.google.firebase.database.DataSnapshot
+
+
 
 class AuthViewModel : ViewModel() {
 
@@ -26,8 +29,11 @@ class AuthViewModel : ViewModel() {
         val id: String = "",
         val name: String = "",
         val owner: String = "",
-        val posts: Map<String, Post> = emptyMap()
+        val posts: Map<String, Post> = emptyMap(),
+        val imageUrl: String = "",
+        val description: String = ""
     )
+
 
 
     data class Post(
@@ -37,6 +43,164 @@ class AuthViewModel : ViewModel() {
     )
 
 
+    data class CartItem(
+        val id: String = "",
+        val owner: String = "",
+        val store: String = "",
+        val product: String = "",
+        val price: String = "",
+        val imageUrl: String = "",
+        val description: String = "",
+        val quantity: Int = 1
+    )
+
+
+
+    fun updateCartItemQuantity(cartItemId: String, newQuantity: Int, onResult: (Boolean) -> Unit) {
+        val userId = auth.currentUser?.uid ?: return onResult(false)
+        val cartRef = FirebaseDatabase.getInstance().getReference("carts").child(userId).child(cartItemId)
+
+        cartRef.child("quantity").setValue(newQuantity)
+            .addOnSuccessListener { onResult(true) }
+            .addOnFailureListener { onResult(false) }
+    }
+
+    fun fetchCartItemsForCurrentUser(onResult: (List<CartItem>) -> Unit) {
+        val user = getCurrentUser() ?: return onResult(emptyList())
+        val uid = user.uid
+
+        val dbRef = FirebaseDatabase.getInstance().getReference("carts").child(uid)
+        dbRef.get().addOnSuccessListener { snapshot ->
+            val cartItems = mutableListOf<CartItem>()
+            snapshot.children.forEach { child ->
+                val item = child.getValue(CartItem::class.java)
+                if (item != null) {
+                    cartItems.add(item)
+                }
+            }
+            onResult(cartItems)
+        }.addOnFailureListener {
+            onResult(emptyList())
+        }
+    }
+
+    fun deleteCartItem(cartItemId: String, onResult: (Boolean) -> Unit = {}) {
+        val userId = auth.currentUser?.uid ?: return onResult(false)
+
+        val database = FirebaseDatabase.getInstance()
+        val cartItemRef = database.getReference("carts").child(userId).child(cartItemId)
+
+        cartItemRef.removeValue()
+            .addOnSuccessListener {
+                onResult(true)
+            }
+            .addOnFailureListener {
+                onResult(false)
+            }
+    }
+
+    fun placeOrder(
+        cartItems: List<CartItem>,
+        totalPrice: Int,
+        onComplete: () -> Unit
+    ) {
+        val user = auth.currentUser ?: return
+        val userId = user.uid
+        val userName = user.displayName ?: user.email ?: "Unknown User"
+
+        val transactionsRef = FirebaseDatabase.getInstance().getReference("transactions").child(userId)
+        val transactionId = transactionsRef.push().key ?: return
+
+        val items = cartItems.map {
+            mapOf(
+                "store" to it.store,
+                "product" to it.product,
+                "quantity" to it.quantity,
+                "price" to it.price
+            )
+        }
+
+        val transactionData = mapOf(
+            "id" to transactionId,
+            "owner" to userName,
+            "items" to items,
+            "totalPrice" to totalPrice.toString(),
+            "timestamp" to System.currentTimeMillis().toString()
+        )
+
+        transactionsRef.child(transactionId).setValue(transactionData).addOnSuccessListener {
+            // Clear cart after placing order
+            FirebaseDatabase.getInstance().getReference("carts").child(userId).removeValue().addOnCompleteListener {
+                onComplete()
+            }
+        }
+    }
+
+    fun addToCart(
+        storeName: String,
+        product: Map<String, String>,
+        onResult: (Boolean, String) -> Unit = { _, _ -> }
+    ) {
+        val user = auth.currentUser ?: return onResult(false, "Not logged in")
+        val userId = user.uid
+        val userName = user.displayName ?: user.email ?: "Unknown User"
+        val cartRef = FirebaseDatabase.getInstance().getReference("carts").child(userId)
+
+        cartRef.get().addOnSuccessListener { snapshot ->
+            var matchingItemSnapshot: DataSnapshot? = null
+
+            for (child in snapshot.children) {
+                val existingProduct = child.child("product").getValue(String::class.java)
+                if (existingProduct == product["title"]) {
+                    matchingItemSnapshot = child
+                    break
+                }
+            }
+
+            if (matchingItemSnapshot != null) {
+                // If product exists: only increment quantity
+                val currentQuantity = matchingItemSnapshot.child("quantity").getValue(Int::class.java) ?: 1
+                val newQuantity = currentQuantity + 1
+
+                val updates = mapOf(
+                    "quantity" to newQuantity
+                )
+
+                cartRef.child(matchingItemSnapshot.key!!).updateChildren(updates).addOnSuccessListener {
+                    onResult(true, "Cart updated: +1 ${product["title"]}")
+                }.addOnFailureListener {
+                    onResult(false, "Failed to update cart")
+                }
+
+            } else {
+                // New product: add with quantity = 1
+                val cartItemId = cartRef.push().key ?: return@addOnSuccessListener onResult(false, "Failed to generate ID")
+
+                val cartData = mapOf(
+                    "id" to cartItemId,
+                    "owner" to userName,
+                    "store" to storeName,
+                    "product" to product["title"],
+                    "price" to product["price"], // this is the unit price
+                    "originalPrice" to product["price"], // just for reference
+                    "quantity" to 1,
+                    "imageUrl" to product["imageUrl"],
+                    "description" to product["description"]
+                )
+
+                cartRef.child(cartItemId).setValue(cartData).addOnSuccessListener {
+                    onResult(true, "Added to cart!")
+                }.addOnFailureListener {
+                    onResult(false, "Failed to add to cart.")
+                }
+            }
+        }.addOnFailureListener {
+            onResult(false, "Failed to check cart: ${it.message}")
+        }
+    }
+
+
+
     fun checkAuthStatus(){
         if(auth.currentUser==null){
             _authState.value = AuthState.Unauthenticated
@@ -44,7 +208,7 @@ class AuthViewModel : ViewModel() {
             _authState.value = AuthState.Authenticated
         }
     }
-    fun createStore(name: String, onResult: (Boolean, String) -> Unit) {
+    fun createStore(name: String, imageUrl: String, description: String, onResult: (Boolean, String) -> Unit) {
         val user = auth.currentUser
         if (user == null) {
             onResult(false, "User not authenticated")
@@ -55,7 +219,9 @@ class AuthViewModel : ViewModel() {
         val store = Store(
             id = storeId,
             name = name,
-            owner = user.displayName ?: user.email ?: "Unknown Owner", // 👈 owner name
+            owner = user.displayName ?: user.email ?: "Unknown Owner",
+            imageUrl = imageUrl,
+            description = description,
             posts = emptyMap()
         )
 
@@ -68,6 +234,19 @@ class AuthViewModel : ViewModel() {
                 onResult(false, it.message ?: "Failed to create store")
             }
     }
+
+
+
+    fun deletePost(postId: String) {
+        val uid = auth.currentUser?.uid ?: return
+        val db = FirebaseDatabase.getInstance().reference
+        db.child("stores")
+            .child(uid)
+            .child("products")
+            .child(postId)
+            .removeValue()
+    }
+
 
 
     fun fetchStores(onResult: (List<Store>) -> Unit) {
@@ -86,7 +265,6 @@ class AuthViewModel : ViewModel() {
                 onResult(emptyList())
             }
     }
-
 
     fun login(email : String,password : String){
 
@@ -129,7 +307,6 @@ class AuthViewModel : ViewModel() {
                 }
             }
     }
-
 
     fun signout(){
         auth.signOut()
