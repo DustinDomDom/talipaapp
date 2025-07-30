@@ -103,8 +103,13 @@ fun SignupPage(
 
         Button(
             onClick = {
-                authViewModel.signup(email, password, name)
-            }, enabled = authState.value != AuthState.Loading
+                if (name.isBlank() || email.isBlank() || password.isBlank()) {
+                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                } else {
+                    authViewModel.signup(email, password, name)
+                }
+            },
+            enabled = authState.value != AuthState.Loading
         ) {
             Text(text = "Create account")
         }
